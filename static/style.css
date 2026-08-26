@@ -231,6 +231,28 @@ button {
   padding: 20px 0;
 }
 
+/* Lyrics */
+
+.lyrics-view {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 0 60px;
+}
+
+.lyrics-line {
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--text-faint);
+  transition: color 0.3s ease;
+}
+
+.lyrics-line.active {
+  color: var(--text);
+}
+
 /* List rows */
 
 .list {

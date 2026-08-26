@@ -1,7 +1,9 @@
+import requests
 from flask import Flask, jsonify, render_template, request
 from spotipy import SpotifyException
 
 from auth import get_spotify_client
+from lyrics import get_lyrics
 
 app = Flask(__name__)
 client = get_spotify_client()
@@ -43,6 +45,27 @@ def now_playing():
             "repeat_state": playback.get("repeat_state"),
         }
     )
+
+
+@app.route("/api/lyrics")
+def lyrics():
+    playback = client.current_playback()
+    if not playback or not playback.get("item"):
+        return jsonify({"available": False})
+
+    item = playback["item"]
+    track_name = item["name"]
+    artist_name = item["artists"][0]["name"] if item["artists"] else ""
+
+    try:
+        result = get_lyrics(track_name, artist_name)
+    except requests.RequestException as exc:
+        return jsonify({"available": False, "error": str(exc)})
+
+    if result is None:
+        return jsonify({"available": False})
+
+    return jsonify({"available": True, **result})
 
 
 @app.route("/api/player/toggle", methods=["POST"])

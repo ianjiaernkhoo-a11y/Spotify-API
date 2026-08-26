@@ -32,7 +32,8 @@
   </header>
 
   <nav class="tabs" id="tabs">
-    <button class="tab active" data-tab="recent">Recently Played</button>
+    <button class="tab active" data-tab="lyrics">Lyrics</button>
+    <button class="tab" data-tab="recent">Recently Played</button>
     <button class="tab" data-tab="top-tracks">Top Tracks</button>
     <button class="tab" data-tab="top-artists">Top Artists</button>
     <button class="tab" data-tab="playlists">Playlists</button>
@@ -42,7 +43,11 @@
   </nav>
 
   <main class="panels">
-    <section class="panel active" id="panel-recent">
+    <section class="panel active" id="panel-lyrics">
+      <div id="lyrics-view" class="lyrics-view"></div>
+    </section>
+
+    <section class="panel" id="panel-recent">
       <div class="list" id="recent-list"></div>
     </section>
 

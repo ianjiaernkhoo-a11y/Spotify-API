@@ -78,6 +78,67 @@ const playerErrorEl = document.getElementById("player-error");
 let lastTrackId = null;
 let userIsDraggingVolume = false;
 
+// --- Lyrics ---
+
+const lyricsView = document.getElementById("lyrics-view");
+let currentLyrics = null; // { sync_type, lines: [{time_ms, text}] } or null
+let activeLyricsLineIndex = -1;
+
+async function loadLyrics() {
+  currentLyrics = null;
+  activeLyricsLineIndex = -1;
+  lyricsView.innerHTML = "";
+  lyricsView.appendChild(el("div", "empty", "Loading lyrics..."));
+
+  let data;
+  try {
+    data = await getJSON("/api/lyrics");
+  } catch (err) {
+    lyricsView.innerHTML = "";
+    lyricsView.appendChild(el("div", "empty", err.message));
+    return;
+  }
+
+  if (!data.available) {
+    lyricsView.innerHTML = "";
+    lyricsView.appendChild(el("div", "empty", data.error || "No lyrics available for this track."));
+    return;
+  }
+
+  currentLyrics = data;
+  lyricsView.innerHTML = "";
+  if (!data.lines.length) {
+    lyricsView.appendChild(el("div", "empty", "No lyrics available for this track."));
+    return;
+  }
+  data.lines.forEach((line, i) => {
+    const p = el("div", "lyrics-line", line.text || "♪");
+    p.dataset.index = i;
+    lyricsView.appendChild(p);
+  });
+}
+
+function updateLyricsHighlight(progressMs) {
+  if (!currentLyrics || currentLyrics.sync_type !== "LINE_SYNCED" || !currentLyrics.lines.length) {
+    return;
+  }
+  let index = -1;
+  for (let i = 0; i < currentLyrics.lines.length; i++) {
+    if (currentLyrics.lines[i].time_ms <= progressMs) index = i;
+    else break;
+  }
+  if (index === activeLyricsLineIndex) return;
+  activeLyricsLineIndex = index;
+
+  const lines = lyricsView.querySelectorAll(".lyrics-line");
+  lines.forEach((lineEl, i) => {
+    lineEl.classList.toggle("active", i === index);
+  });
+  if (index >= 0 && document.getElementById("panel-lyrics").classList.contains("active")) {
+    lines[index].scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+}
+
 async function pollNowPlaying() {
   let data;
   try {
@@ -94,7 +155,13 @@ async function pollNowPlaying() {
     elapsedEl.textContent = "0:00";
     durationEl.textContent = "0:00";
     deviceInfoEl.textContent = "";
-    lastTrackId = null;
+    if (lastTrackId !== null) {
+      lastTrackId = null;
+      currentLyrics = null;
+      activeLyricsLineIndex = -1;
+      lyricsView.innerHTML = "";
+      lyricsView.appendChild(el("div", "empty", "Nothing is currently playing."));
+    }
     return;
   }
 
@@ -103,12 +170,14 @@ async function pollNowPlaying() {
     trackEl.textContent = data.track;
     artistsEl.textContent = data.artists;
     art.src = data.album_art || "";
+    loadLyrics();
   }
 
   const pct = data.duration_ms ? (data.progress_ms / data.duration_ms) * 100 : 0;
   progressBar.style.width = `${Math.min(100, pct)}%`;
   elapsedEl.textContent = formatTime(data.progress_ms);
   durationEl.textContent = formatTime(data.duration_ms);
+  updateLyricsHighlight(data.progress_ms);
   deviceInfoEl.textContent = data.device_name
     ? `${data.device_name} · ${data.shuffle_state ? "shuffle on" : "shuffle off"} · repeat: ${data.repeat_state}`
     : "";
@@ -266,6 +335,7 @@ async function loadFollowing() {
 }
 
 const loaders = {
+  lyrics: () => {},
   recent: loadRecent,
   "top-tracks": () => loadTopTracks("short_term"),
   "top-artists": () => loadTopArtists("short_term"),
@@ -288,9 +358,9 @@ document.querySelectorAll(".range-select").forEach((group) => {
   });
 });
 
-// Load the first tab's data immediately.
-loadedTabs.add("recent");
-loadRecent();
+// Load the first tab's data immediately (lyrics load automatically via
+// pollNowPlaying's track-change detection).
+loadedTabs.add("lyrics");
 
 // --- Search ---
 
