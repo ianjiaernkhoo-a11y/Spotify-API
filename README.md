@@ -28,4 +28,12 @@ Spotify API dashboard
    ```
    python now_playing.py
    ```
+6. Or run the web dashboard, which demonstrates a broad set of Spotify Web
+   API calls (now playing + playback controls, recently played, top
+   tracks/artists, playlists, saved tracks, followed artists, search):
+   ```
+   python dashboard.py
+   ```
+   Then open http://localhost:8080 (or the printed LAN address to view it
+   from another device, e.g. a Pi's kiosk browser).
 
