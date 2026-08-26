@@ -14,6 +14,11 @@ Spotify API dashboard
    ```
    pip install -r requirements.txt
    ```
+3b. (Optional) Sanity-check your Client ID/Secret before doing the full user
+    login, using the Client Credentials flow (no browser needed):
+   ```
+   ./test_credentials.sh
+   ```
 4. Authenticate (opens a browser once to authorize your Spotify account, then
    caches a refresh token in `.cache`):
    ```
