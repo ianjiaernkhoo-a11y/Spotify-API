@@ -1,6 +1,9 @@
+import sys
 import time
 
 from auth import get_spotify_client
+
+sys.stdout.reconfigure(encoding="utf-8")
 
 POLL_INTERVAL_SECONDS = 5
 
