@@ -1,0 +1,2 @@
+requests>=2.31
+mitmproxy>=10.0
