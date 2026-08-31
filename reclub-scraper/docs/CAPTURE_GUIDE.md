@@ -1,9 +1,14 @@
-# Capturing ReClub's API traffic (iOS)
+# Capturing ReClub's API traffic (Android)
 
-ReClub is iOS-only with no public web API, so the practical way to find real
-endpoints is to put your iPhone's traffic through a proxy while you use the
-app, then read the requests it makes. This only works for **your own
+ReClub has no public web API, so the practical way to find real endpoints is
+to put your Android device/emulator's traffic through a proxy while you use
+the app, then read the requests it makes. This only works for **your own
 account**, at low volume, for personal use.
+
+Android is the easier platform for this (no Mac, no code signing, and
+rooting is much more accessible than iOS jailbreaking if you hit
+certificate pinning), so it's the recommended target if the app is
+available on both.
 
 ## 1. Set up mitmproxy on your computer
 
@@ -13,32 +18,36 @@ mitmweb --listen-port 8080
 ```
 
 `mitmweb` opens a browser UI at http://127.0.0.1:8081 showing captured
-traffic live. Note your computer's LAN IP (`ipconfig getifaddr en0` on Mac,
-or check Wi-Fi settings) — your phone needs it in the next step.
+traffic live. Note your computer's LAN IP — your phone/emulator needs it
+next.
 
-## 2. Point your iPhone at the proxy
+## 2. Get a device or emulator you can proxy
 
-1. On the iPhone: **Settings → Wi-Fi → (i) next to your network → Configure
-   Proxy → Manual**.
-2. Server = your computer's LAN IP, Port = `8080`.
-3. Make sure the phone and computer are on the **same Wi-Fi network**.
+- **Emulator (recommended to start)**: create an AVD in Android Studio using
+  a **Google APIs** system image (not "Google Play" — those images are
+  harder to root). Google APIs images boot with a writable system
+  partition, which you'll want in step 4 if pinning is an issue.
+- **Physical device**: any Android phone works for basic proxying; you'll
+  need it rooted (e.g. via Magisk) if you hit certificate pinning later.
 
-## 3. Install and trust the mitmproxy certificate
+Point its Wi-Fi (or the emulator's proxy setting, `-http-proxy` flag, or
+`adb shell settings put global http_proxy <ip>:8080`) at your computer's
+IP and port from step 1.
 
-HTTPS traffic is encrypted, so mitmproxy needs a certificate your phone
-trusts in order to decrypt and show it to you:
+## 3. Install the mitmproxy certificate
 
-1. On the iPhone (while the proxy above is active), open Safari and go to
-   `http://mitm.it`.
-2. Tap the iOS certificate link and install the profile
-   (**Settings → General → VPN & Device Management**).
-3. Then go to **Settings → General → About → Certificate Trust Settings**
-   and enable full trust for the "mitmproxy" certificate.
+1. With the proxy active, open the emulator/device's browser and go to
+   `http://mitm.it`, then download the Android certificate.
+2. Install it: **Settings → Security → Encryption & credentials → Install a
+   certificate → CA certificate**, and select the downloaded file.
+
+This gets you a **user-installed** certificate. That's often *not enough*
+on its own — see the caveat in step 5.
 
 ## 4. Use the app and watch the traffic
 
 Open ReClub and browse to club/event listings. In the mitmweb UI you'll see
-each request. Look for calls to a domain that isn't Apple/analytics/CDN —
+each request. Look for calls to a domain that isn't Google/analytics/CDN —
 that's ReClub's API. For each relevant request, note:
 
 - Method + full URL (path and query params, e.g. `page`, `limit`, `city`)
@@ -55,14 +64,42 @@ easier to grep through than clicking every row in the UI:
 mitmdump -s scripts/mitm_export.py --set target_host=api.reclubapp.example
 ```
 
-## 5. Important caveats
+## 5. If you see no traffic, or the app refuses to load data
 
-- **Certificate pinning**: if the app pins its TLS certificate (rejects any
-  cert other than the real server's, mitmproxy's included), you won't see
-  decrypted traffic at all — the app will just fail to load data over the
-  proxy. There's no simple non-jailbreak fix for this; if that happens, the
-  hidden-API approach is a dead end and Appium-based UI automation (driving
-  the actual app screens) would be the fallback instead.
+Since Android 7 (API 24+), apps by default trust only **system** CAs, not
+user-installed ones — so a user cert alone may not be enough even without
+deliberate pinning. In order of effort:
+
+1. **Push the mitmproxy CA into the system trust store** (needs root):
+   ```bash
+   adb root
+   adb remount
+   # move the cert from user store into /system/etc/security/cacerts/
+   # with the correct filename (hash of the cert subject) and permissions
+   ```
+   This satisfies apps that trust "any system CA" but not apps doing true
+   certificate pinning (checking the exact cert/public key).
+
+2. **If ReClub pins its certificate**, use Frida + Objection on a rooted
+   device/emulator to hook the app's TLS verification at runtime and force
+   it to accept your proxy's cert regardless of pinning:
+   ```bash
+   pip install objection frida-tools
+   # push frida-server matching your device's ABI/Frida version, run it as root
+   objection -g com.reclub.app explore
+   # inside objection:
+   android sslpinning disable
+   ```
+   This is the Android equivalent of iOS jailbreak-based unpinning, but
+   meaningfully easier to set up — rooting an emulator or a spare device via
+   Magisk is routine.
+
+3. **If none of that works**, the hidden-API approach is a dead end for now
+   and Appium-based UI automation (driving the actual app screens via
+   UiAutomator2) is the fallback — see `docs/APPIUM_ANDROID.md`.
+
+## 6. Important caveats
+
 - **Auth tokens expire.** Whatever `Authorization`/session token you copy
   out of the capture will likely expire (minutes to weeks depending on the
   app). `reclub_scraper.py` expects you to supply a fresh token via
