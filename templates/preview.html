@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiosk Preview</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='preview.css') }}">
+</head>
+<body>
+  <header class="page-header">
+    <h1>Kiosk Preview</h1>
+    <p>The test bench for the photo-frame build — every scene, live, at your panel's true 165&times;100mm size.</p>
+  </header>
+
+  <section class="preview-panel">
+    <div class="scene-tabs" id="scene-tabs">
+      <button class="scene-tab active" data-src="/kiosk">Now Playing</button>
+      <button class="scene-tab" data-src="/wallpaper">Wallpaper</button>
+    </div>
+    <div class="frame-outer">
+      <div class="frame" id="frame">
+        <iframe id="kiosk-frame" src="/kiosk" width="1024" height="600"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <details class="calibration" id="calibration">
+    <summary>Monitor calibration <span class="cal-summary" id="cal-summary"></span></summary>
+
+    <p>
+      Browsers can't ask your monitor how many pixels-per-inch it really has, so "mm" in CSS
+      is just a guess. Calibrate once with a real-world object and this page remembers it
+      (stored in this browser).
+    </p>
+
+    <ol>
+      <li>Grab a standard bank/credit/ID card (85.60 &times; 53.98&nbsp;mm — nearly every wallet card is this size).</li>
+      <li>Hold it up against the outline below.</li>
+      <li>Drag the slider until the outline matches the card exactly.</li>
+    </ol>
+
+    <div class="card-calibrator">
+      <div class="card-outline" id="card-outline"></div>
+    </div>
+
+    <div class="controls">
+      <label for="slider">Calibration</label>
+      <input type="range" id="slider" min="2.0" max="6.0" step="0.005" value="3.7795" />
+      <input type="number" id="numeric" min="2.0" max="6.0" step="0.005" value="3.7795" />
+      <span class="unit">px / mm</span>
+      <button id="reset">Reset to 96dpi default</button>
+    </div>
+
+    <div class="readout" id="readout"></div>
+  </details>
+
+  <script src="{{ url_for('static', filename='preview.js') }}"></script>
+</body>
+</html>

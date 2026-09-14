@@ -1,3 +1,5 @@
+import os
+
 import requests
 from flask import Flask, jsonify, render_template, request
 from spotipy import SpotifyException
@@ -11,6 +13,38 @@ client = get_spotify_client()
 VALID_TIME_RANGES = {"short_term", "medium_term", "long_term"}
 VALID_SEARCH_TYPES = {"track", "artist", "album", "playlist"}
 
+WALLPAPER_DIR = os.path.join(app.static_folder, "wallpapers")
+WALLPAPER_EXTENSIONS = {".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".svg"}
+
+WEATHER_LATITUDE = os.environ.get("WEATHER_LATITUDE")
+WEATHER_LONGITUDE = os.environ.get("WEATHER_LONGITUDE")
+WEATHER_UNIT = os.environ.get("WEATHER_UNIT", "celsius")  # "celsius" or "fahrenheit"
+
+# WMO weather codes (used by Open-Meteo) collapsed into a handful of emoji.
+WEATHER_ICONS = {
+    0: "☀️",  # clear sky
+    1: "\U0001f324️",
+    2: "⛅",
+    3: "☁️",
+    45: "\U0001f32b️",
+    48: "\U0001f32b️",
+    51: "\U0001f326️",
+    53: "\U0001f326️",
+    55: "\U0001f326️",
+    61: "\U0001f327️",
+    63: "\U0001f327️",
+    65: "\U0001f327️",
+    71: "\U0001f328️",
+    73: "\U0001f328️",
+    75: "\U0001f328️",
+    80: "\U0001f326️",
+    81: "\U0001f327️",
+    82: "⛈️",
+    95: "⛈️",
+    96: "⛈️",
+    99: "⛈️",
+}
+
 
 def api_error(exc: SpotifyException):
     return jsonify({"error": exc.msg or str(exc)}), exc.http_status or 500
@@ -19,6 +53,36 @@ def api_error(exc: SpotifyException):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/kiosk")
+def kiosk():
+    return render_template("kiosk.html")
+
+
+@app.route("/preview")
+def preview():
+    return render_template("preview.html")
+
+
+@app.route("/wallpaper")
+def wallpaper():
+    return render_template("wallpaper.html")
+
+
+@app.route("/api/wallpapers")
+def wallpapers():
+    try:
+        names = sorted(os.listdir(WALLPAPER_DIR))
+    except FileNotFoundError:
+        return jsonify([])
+
+    urls = [
+        f"/static/wallpapers/{name}"
+        for name in names
+        if os.path.splitext(name)[1].lower() in WALLPAPER_EXTENSIONS
+    ]
+    return jsonify(urls)
 
 
 @app.route("/api/now-playing")
@@ -37,6 +101,8 @@ def now_playing():
             "artists": ", ".join(a["name"] for a in item["artists"]),
             "album": item["album"]["name"],
             "album_art": images[0]["url"] if images else None,
+            "album_release_date": item["album"].get("release_date"),
+            "album_release_date_precision": item["album"].get("release_date_precision"),
             "progress_ms": playback.get("progress_ms") or 0,
             "duration_ms": item.get("duration_ms") or 0,
             "device_name": device.get("name"),
@@ -66,6 +132,71 @@ def lyrics():
         return jsonify({"available": False})
 
     return jsonify({"available": True, **result})
+
+
+@app.route("/api/track-extra")
+def track_extra():
+    playback = client.current_playback()
+    if not playback or not playback.get("item"):
+        return jsonify({"label": None})
+
+    album_id = playback["item"]["album"]["id"]
+    try:
+        album = client.album(album_id)
+    except SpotifyException as exc:
+        return api_error(exc)
+
+    return jsonify({"label": album.get("label")})
+
+
+@app.route("/api/queue")
+def queue():
+    try:
+        result = client.queue()
+    except SpotifyException as exc:
+        return api_error(exc)
+
+    items = [
+        {
+            "track": t["name"],
+            "artists": ", ".join(a["name"] for a in t["artists"]),
+            "album_art": (t["album"]["images"] or [{}])[-1].get("url"),
+        }
+        for t in (result.get("queue") or [])[:3]
+    ]
+    return jsonify(items)
+
+
+@app.route("/api/weather")
+def weather():
+    if not WEATHER_LATITUDE or not WEATHER_LONGITUDE:
+        return jsonify({"configured": False})
+
+    try:
+        response = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": WEATHER_LATITUDE,
+                "longitude": WEATHER_LONGITUDE,
+                "current": "temperature_2m,weather_code",
+                "temperature_unit": WEATHER_UNIT,
+                "timezone": "auto",
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        current = response.json()["current"]
+    except (requests.RequestException, KeyError) as exc:
+        return jsonify({"configured": True, "error": str(exc)}), 502
+
+    return jsonify(
+        {
+            "configured": True,
+            "temperature": current["temperature_2m"],
+            "unit": "F" if WEATHER_UNIT == "fahrenheit" else "C",
+            "icon": WEATHER_ICONS.get(current["weather_code"], "\U0001f321️"),
+        }
+    )
 
 
 @app.route("/api/player/toggle", methods=["POST"])
