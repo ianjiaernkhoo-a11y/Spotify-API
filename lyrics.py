@@ -6,10 +6,18 @@ crowd-sourced, so some tracks (especially very obscure ones) may be missing.
 import re
 
 import requests
+from zhconv import convert as _zhconv
 
 SEARCH_URL = "https://lrclib.net/api/search"
 
 _LRC_LINE_RE = re.compile(r"^\[(\d+):(\d+(?:\.\d+)?)\](.*)$")
+
+
+def _to_simplified(text: str) -> str:
+    """LRCLIB returns whatever script the contributor uploaded (often
+    Traditional for Chinese tracks). Converting to Simplified is a no-op
+    for text that isn't Chinese, so this is safe to apply unconditionally."""
+    return _zhconv(text, "zh-cn")
 
 
 def _parse_synced_lyrics(lrc_text: str) -> list[dict]:
@@ -20,7 +28,7 @@ def _parse_synced_lyrics(lrc_text: str) -> list[dict]:
             continue
         minutes, seconds, text = match.groups()
         time_ms = int((int(minutes) * 60 + float(seconds)) * 1000)
-        lines.append({"time_ms": time_ms, "text": text.strip()})
+        lines.append({"time_ms": time_ms, "text": _to_simplified(text.strip())})
     return lines
 
 
@@ -49,7 +57,11 @@ def get_lyrics(track_name: str, artist_name: str) -> dict | None:
     if plain:
         return {
             "sync_type": "UNSYNCED",
-            "lines": [{"time_ms": 0, "text": line} for line in plain.split("\n") if line.strip()],
+            "lines": [
+                {"time_ms": 0, "text": _to_simplified(line)}
+                for line in plain.split("\n")
+                if line.strip()
+            ],
         }
 
     return None
