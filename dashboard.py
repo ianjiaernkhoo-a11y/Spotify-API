@@ -1,13 +1,18 @@
+import io
 import os
+import uuid
 
 import requests
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request
+from PIL import Image, UnidentifiedImageError
 from spotipy import SpotifyException
+from werkzeug.utils import secure_filename
 
 from auth import get_spotify_client
 from lyrics import get_lyrics
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024  # 25MB per request
 client = get_spotify_client()
 
 VALID_TIME_RANGES = {"short_term", "medium_term", "long_term"}
@@ -15,6 +20,7 @@ VALID_SEARCH_TYPES = {"track", "artist", "album", "playlist"}
 
 WALLPAPER_DIR = os.path.join(app.static_folder, "wallpapers")
 WALLPAPER_EXTENSIONS = {".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".svg"}
+os.makedirs(WALLPAPER_DIR, exist_ok=True)
 
 WEATHER_LATITUDE = os.environ.get("WEATHER_LATITUDE")
 WEATHER_LONGITUDE = os.environ.get("WEATHER_LONGITUDE")
@@ -70,19 +76,74 @@ def wallpaper():
     return render_template("wallpaper.html")
 
 
-@app.route("/api/wallpapers")
-def wallpapers():
+@app.route("/upload")
+def upload_page():
+    return render_template("upload.html")
+
+
+def _wallpaper_names():
     try:
         names = sorted(os.listdir(WALLPAPER_DIR))
     except FileNotFoundError:
-        return jsonify([])
+        return []
+    return [n for n in names if os.path.splitext(n)[1].lower() in WALLPAPER_EXTENSIONS]
 
-    urls = [
-        f"/static/wallpapers/{name}"
-        for name in names
-        if os.path.splitext(name)[1].lower() in WALLPAPER_EXTENSIONS
-    ]
-    return jsonify(urls)
+
+@app.route("/api/wallpapers")
+def wallpapers():
+    return jsonify([f"/static/wallpapers/{name}" for name in _wallpaper_names()])
+
+
+@app.route("/api/wallpapers/list")
+def wallpapers_list():
+    return jsonify(
+        [{"filename": name, "url": f"/static/wallpapers/{name}"} for name in _wallpaper_names()]
+    )
+
+
+@app.route("/api/wallpapers/upload", methods=["POST"])
+def wallpapers_upload():
+    files = request.files.getlist("photos")
+    uploaded = []
+    rejected = []
+
+    for file in files:
+        if not file or not file.filename:
+            continue
+
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in WALLPAPER_EXTENSIONS or ext == ".svg":
+            rejected.append({"filename": file.filename, "reason": "Not a supported photo format"})
+            continue
+
+        data = file.read()
+        try:
+            Image.open(io.BytesIO(data)).verify()
+        except (UnidentifiedImageError, OSError):
+            rejected.append({"filename": file.filename, "reason": "Not a valid image"})
+            continue
+
+        safe_name = secure_filename(file.filename) or "photo"
+        stored_name = f"{uuid.uuid4().hex[:8]}-{safe_name}"
+        with open(os.path.join(WALLPAPER_DIR, stored_name), "wb") as f:
+            f.write(data)
+        uploaded.append({"filename": stored_name, "url": f"/static/wallpapers/{stored_name}"})
+
+    return jsonify({"uploaded": uploaded, "rejected": rejected})
+
+
+@app.route("/api/wallpapers/<filename>", methods=["DELETE"])
+def wallpapers_delete(filename):
+    safe_name = secure_filename(filename)
+    if not safe_name or safe_name != filename:
+        abort(400)
+
+    path = os.path.join(WALLPAPER_DIR, safe_name)
+    if not os.path.isfile(path):
+        abort(404)
+
+    os.remove(path)
+    return jsonify({"ok": True})
 
 
 @app.route("/api/now-playing")
