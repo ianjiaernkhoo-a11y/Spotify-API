@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Add Photos</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='upload.css') }}">
+</head>
+<body>
+  <header class="page-header">
+    <h1>Add photos</h1>
+    <p>Drop photos in and they'll show up in Wallpaper mode on the frame.</p>
+  </header>
+
+  <label class="dropzone" id="dropzone" for="file-input">
+    <div class="dropzone-icon">+</div>
+    <div class="dropzone-text">Drag photos here, or tap to choose</div>
+    <input type="file" id="file-input" accept="image/*" multiple hidden />
+  </label>
+
+  <div class="status" id="status"></div>
+
+  <section class="gallery">
+    <h2>Current photos</h2>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <script src="{{ url_for('static', filename='upload.js') }}"></script>
+</body>
+</html>

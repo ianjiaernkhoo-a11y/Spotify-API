@@ -1,3 +1,9 @@
+/* Smooth crossfade between /kiosk and /wallpaper instead of a hard reload.
+   Unsupported browsers just get a normal navigation — no fallback needed. */
+@view-transition {
+  navigation: auto;
+}
+
 :root {
   color-scheme: dark;
   --bg: #0b0b0d;
@@ -283,6 +289,32 @@ html, body {
   line-height: 1;
   padding: 6px 10px;
   cursor: pointer;
+}
+
+.scene-switch {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--text);
+  background: rgba(24, 24, 27, 0.4);
+  backdrop-filter: blur(10px);
+  font-size: 1.1rem;
+  opacity: 0.32;
+  transition: opacity 0.25s ease, background 0.25s ease;
+}
+
+.scene-switch:hover,
+.scene-switch:focus-visible {
+  opacity: 1;
+  background: rgba(24, 24, 27, 0.7);
 }
 
 .lyrics-view {

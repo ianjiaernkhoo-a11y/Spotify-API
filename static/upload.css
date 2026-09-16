@@ -1,0 +1,159 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0b0d;
+  --surface: #18181b;
+  --surface-2: #232326;
+  --text: #f5f5f7;
+  --text-dim: #a1a1a6;
+  --text-faint: #6e6e73;
+  --accent: #1db954;
+  --danger: #ff6b6b;
+  --border: #2c2c2e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+}
+
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  padding: 24px;
+}
+
+.page-header {
+  max-width: 640px;
+  margin: 0 auto 24px;
+  text-align: center;
+}
+
+.page-header h1 {
+  font-size: 1.6rem;
+  margin: 0 0 8px;
+}
+
+.page-header p {
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 640px;
+  margin: 0 auto 16px;
+  padding: 48px 20px;
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.dropzone.drag-over {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.dropzone-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropzone-text {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+.status {
+  max-width: 640px;
+  margin: 0 auto 24px;
+  min-height: 1.2em;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.status.error {
+  color: var(--danger);
+}
+
+.gallery {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.gallery h2 {
+  font-size: 1rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+  aspect-ratio: 1;
+}
+
+.card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card .delete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.card:hover .delete,
+.card:focus-within .delete {
+  opacity: 1;
+}
+
+.card .delete:hover {
+  background: var(--danger);
+}
+
+.empty-note {
+  color: var(--text-faint);
+  font-size: 0.9rem;
+}
