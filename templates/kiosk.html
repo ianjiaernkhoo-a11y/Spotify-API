@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiosk — Now Playing</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='kiosk.css') }}">
+</head>
+<body>
+  <div class="bg" id="bg"></div>
+
+  <div class="top-right">
+    <div class="weather" id="weather" hidden></div>
+    <div class="clock" id="clock">--:--</div>
+  </div>
+
+  <main class="scene" id="scene-now-playing" hidden>
+    <div class="art-wrap">
+      <img id="art" class="art" alt="" />
+    </div>
+
+    <div class="meta">
+      <div class="title-row">
+        <div id="track" class="track"></div>
+        <div id="eq" class="eq" hidden>
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <div id="artists" class="artists"></div>
+      <div id="album-caption" class="album-caption"></div>
+
+      <div class="progress-track">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+      <div class="times">
+        <span id="elapsed">0:00</span>
+        <span id="duration">0:00</span>
+      </div>
+
+      <div id="lyrics-view" class="lyrics-view"></div>
+    </div>
+  </main>
+
+  <div class="idle-view" id="idle-view">
+    <div class="idle-icon">
+      <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor">
+        <path d="M9 17V5.6L20 3v11.4M9 17a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm11-2.6a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM9 8.5 20 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="idle-title">Nothing is playing</div>
+    <div class="idle-subtitle">Start something on Spotify and it'll show up here</div>
+  </div>
+
+  <div id="up-next-corner" class="up-next-corner" hidden>
+    <img id="up-next-corner-art" class="up-next-corner-art" alt="" />
+    <div class="up-next-corner-text">
+      <div class="up-next-corner-label">Up next</div>
+      <div id="up-next-corner-title" class="up-next-corner-title"></div>
+    </div>
+  </div>
+
+  <div class="controls-bar" id="controls-bar">
+    <button id="btn-prev" title="Previous (←)">⏮</button>
+    <button id="btn-toggle" title="Play/Pause (Space)">⏯</button>
+    <button id="btn-next" title="Next (→)">⏭</button>
+  </div>
+
+  <script src="{{ url_for('static', filename='kiosk.js') }}"></script>
+</body>
+</html>

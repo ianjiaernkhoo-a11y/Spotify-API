@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiosk — Wallpaper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='wallpaper.css') }}">
+</head>
+<body>
+  <div class="layer" id="layer-a"></div>
+  <div class="layer" id="layer-b"></div>
+
+  <div class="clock" id="clock">--:--</div>
+  <div class="empty" id="empty" hidden>
+    Drop photos into <code>static/wallpapers/</code> to see them here.
+  </div>
+
+  <script src="{{ url_for('static', filename='wallpaper.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+.env
+.cache
+__pycache__/
+*.pyc
+venv/
+*.log
+.claude/
+
+# personal photos dropped in for the wallpaper scene — not meant for the repo
+static/wallpapers/*
+!static/wallpapers/.gitkeep

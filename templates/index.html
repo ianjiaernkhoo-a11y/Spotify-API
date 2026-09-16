@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spotify API Functions Demo</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="now-playing" id="now-playing">
+    <img id="art" class="art" alt="" />
+    <div class="np-meta">
+      <div id="track" class="track">Nothing is currently playing</div>
+      <div id="artists" class="artists"></div>
+      <div class="progress-track">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+      <div class="times">
+        <span id="elapsed">0:00</span>
+        <span id="device-info"></span>
+        <span id="duration">0:00</span>
+      </div>
+      <div class="controls">
+        <button id="btn-prev" title="Previous">⏮</button>
+        <button id="btn-toggle" title="Play/Pause">⏯</button>
+        <button id="btn-next" title="Next">⏭</button>
+        <button id="btn-shuffle" title="Toggle shuffle">🔀</button>
+        <input id="volume" type="range" min="0" max="100" title="Volume" />
+      </div>
+      <div id="player-error" class="player-error"></div>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="lyrics">Lyrics</button>
+    <button class="tab" data-tab="recent">Recently Played</button>
+    <button class="tab" data-tab="top-tracks">Top Tracks</button>
+    <button class="tab" data-tab="top-artists">Top Artists</button>
+    <button class="tab" data-tab="playlists">Playlists</button>
+    <button class="tab" data-tab="saved">Saved Tracks</button>
+    <button class="tab" data-tab="following">Following</button>
+    <button class="tab" data-tab="search">Search</button>
+  </nav>
+
+  <main class="panels">
+    <section class="panel active" id="panel-lyrics">
+      <div id="lyrics-view" class="lyrics-view"></div>
+    </section>
+
+    <section class="panel" id="panel-recent">
+      <div class="list" id="recent-list"></div>
+    </section>
+
+    <section class="panel" id="panel-top-tracks">
+      <div class="range-select" data-target="top-tracks">
+        <button class="range active" data-range="short_term">4 weeks</button>
+        <button class="range" data-range="medium_term">6 months</button>
+        <button class="range" data-range="long_term">All time</button>
+      </div>
+      <div class="list" id="top-tracks-list"></div>
+    </section>
+
+    <section class="panel" id="panel-top-artists">
+      <div class="range-select" data-target="top-artists">
+        <button class="range active" data-range="short_term">4 weeks</button>
+        <button class="range" data-range="medium_term">6 months</button>
+        <button class="range" data-range="long_term">All time</button>
+      </div>
+      <div class="grid" id="top-artists-list"></div>
+    </section>
+
+    <section class="panel" id="panel-playlists">
+      <div class="grid" id="playlists-list"></div>
+    </section>
+
+    <section class="panel" id="panel-saved">
+      <div class="list" id="saved-list"></div>
+    </section>
+
+    <section class="panel" id="panel-following">
+      <div class="grid" id="following-list"></div>
+    </section>
+
+    <section class="panel" id="panel-search">
+      <div class="search-bar">
+        <input id="search-input" type="text" placeholder="Search Spotify..." />
+        <select id="search-type">
+          <option value="track">Track</option>
+          <option value="artist">Artist</option>
+          <option value="album">Album</option>
+          <option value="playlist">Playlist</option>
+        </select>
+      </div>
+      <div class="grid" id="search-list"></div>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
