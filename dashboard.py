@@ -1,14 +1,14 @@
-import io
 import os
 import uuid
 
 import requests
 from flask import Flask, abort, jsonify, render_template, request
-from PIL import Image, UnidentifiedImageError
 from spotipy import SpotifyException
 from werkzeug.utils import secure_filename
 
+import drive_sync
 from auth import get_spotify_client
+from image_utils import normalize_image
 from lyrics import get_lyrics
 
 app = Flask(__name__)
@@ -19,7 +19,7 @@ VALID_TIME_RANGES = {"short_term", "medium_term", "long_term"}
 VALID_SEARCH_TYPES = {"track", "artist", "album", "playlist"}
 
 WALLPAPER_DIR = os.path.join(app.static_folder, "wallpapers")
-WALLPAPER_EXTENSIONS = {".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".svg"}
+WALLPAPER_EXTENSIONS = {".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".svg", ".heic", ".heif"}
 os.makedirs(WALLPAPER_DIR, exist_ok=True)
 
 WEATHER_LATITUDE = os.environ.get("WEATHER_LATITUDE")
@@ -78,7 +78,9 @@ def wallpaper():
 
 @app.route("/upload")
 def upload_page():
-    return render_template("upload.html")
+    return render_template(
+        "upload.html", drive_configured=bool(os.environ.get("GOOGLE_DRIVE_FOLDER_ID"))
+    )
 
 
 def _wallpaper_names():
@@ -116,14 +118,15 @@ def wallpapers_upload():
             rejected.append({"filename": file.filename, "reason": "Not a supported photo format"})
             continue
 
-        data = file.read()
         try:
-            Image.open(io.BytesIO(data)).verify()
-        except (UnidentifiedImageError, OSError):
+            data, converted = normalize_image(file.read())
+        except ValueError:
             rejected.append({"filename": file.filename, "reason": "Not a valid image"})
             continue
 
         safe_name = secure_filename(file.filename) or "photo"
+        if converted:
+            safe_name = os.path.splitext(safe_name)[0] + ".jpg"
         stored_name = f"{uuid.uuid4().hex[:8]}-{safe_name}"
         with open(os.path.join(WALLPAPER_DIR, stored_name), "wb") as f:
             f.write(data)
@@ -134,16 +137,38 @@ def wallpapers_upload():
 
 @app.route("/api/wallpapers/<filename>", methods=["DELETE"])
 def wallpapers_delete(filename):
-    safe_name = secure_filename(filename)
-    if not safe_name or safe_name != filename:
+    # secure_filename() also normalizes safe characters (spaces, commas,
+    # parens), which would wrongly reject legitimate files that were dropped
+    # into the folder directly rather than uploaded through this app. Guard
+    # against path traversal by resolving the real path instead.
+    wallpaper_root = os.path.abspath(WALLPAPER_DIR)
+    path = os.path.abspath(os.path.join(wallpaper_root, filename))
+    if os.path.dirname(path) != wallpaper_root:
         abort(400)
 
-    path = os.path.join(WALLPAPER_DIR, safe_name)
     if not os.path.isfile(path):
         abort(404)
 
     os.remove(path)
     return jsonify({"ok": True})
+
+
+@app.route("/api/wallpapers/sync-drive", methods=["POST"])
+def wallpapers_sync_drive():
+    if not os.environ.get("GOOGLE_DRIVE_FOLDER_ID"):
+        return jsonify({"error": "Google Drive sync isn't configured."}), 400
+
+    if not drive_sync.is_authenticated():
+        return jsonify(
+            {"error": "Not authenticated yet — run 'python drive_sync.py' once from a terminal."}
+        ), 400
+
+    try:
+        result = drive_sync.sync()
+    except Exception as exc:  # noqa: BLE001 - surface any Drive API error to the UI
+        return jsonify({"error": str(exc)}), 502
+
+    return jsonify(result)
 
 
 @app.route("/api/now-playing")

@@ -20,6 +20,12 @@
 
   <div class="status" id="status"></div>
 
+  {% if drive_configured %}
+  <div class="drive-sync">
+    <button id="btn-sync-drive">Sync from Google Drive</button>
+  </div>
+  {% endif %}
+
   <section class="gallery">
     <h2>Current photos</h2>
     <div class="grid" id="grid"></div>
