@@ -40,7 +40,8 @@ async function showNext() {
 
   const incoming = showingA ? layerB : layerA;
   const outgoing = showingA ? layerA : layerB;
-  incoming.style.backgroundImage = `url("${url}")`;
+  incoming.querySelector(".layer-bg").style.backgroundImage = `url("${url}")`;
+  incoming.querySelector(".layer-fg").src = url;
   incoming.classList.add("visible");
   outgoing.classList.remove("visible");
   showingA = !showingA;

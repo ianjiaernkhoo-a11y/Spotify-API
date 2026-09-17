@@ -7,8 +7,14 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='wallpaper.css') }}">
 </head>
 <body>
-  <div class="layer" id="layer-a"></div>
-  <div class="layer" id="layer-b"></div>
+  <div class="layer" id="layer-a">
+    <div class="layer-bg"></div>
+    <img class="layer-fg" alt="" />
+  </div>
+  <div class="layer" id="layer-b">
+    <div class="layer-bg"></div>
+    <img class="layer-fg" alt="" />
+  </div>
 
   <div class="clock" id="clock">--:--</div>
   <div class="empty" id="empty" hidden>
