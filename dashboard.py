@@ -2,7 +2,7 @@ import os
 import uuid
 
 import requests
-from flask import Flask, abort, jsonify, render_template, request
+from flask import Flask, Response, abort, jsonify, render_template, request
 from spotipy import SpotifyException
 from werkzeug.utils import secure_filename
 
@@ -91,9 +91,30 @@ def _wallpaper_names():
     return [n for n in names if os.path.splitext(n)[1].lower() in WALLPAPER_EXTENSIONS]
 
 
+def _drive_urls():
+    if not (os.environ.get("GOOGLE_DRIVE_FOLDER_ID") and drive_sync.is_authenticated()):
+        return []
+    try:
+        photos = drive_sync.list_photos()
+    except Exception:  # noqa: BLE001 - Drive being briefly unreachable shouldn't break local wallpapers
+        return []
+    return [f"/api/wallpaper-image/{photo['id']}" for photo in photos]
+
+
 @app.route("/api/wallpapers")
 def wallpapers():
-    return jsonify([f"/static/wallpapers/{name}" for name in _wallpaper_names()])
+    return jsonify([f"/static/wallpapers/{name}" for name in _wallpaper_names()] + _drive_urls())
+
+
+@app.route("/api/wallpaper-image/<file_id>")
+def wallpaper_image(file_id):
+    try:
+        data, content_type = drive_sync.get_photo_bytes(file_id)
+    except drive_sync.DriveError:
+        abort(404)
+    response = Response(data, mimetype=content_type)
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    return response
 
 
 @app.route("/api/wallpapers/list")
@@ -151,24 +172,6 @@ def wallpapers_delete(filename):
 
     os.remove(path)
     return jsonify({"ok": True})
-
-
-@app.route("/api/wallpapers/sync-drive", methods=["POST"])
-def wallpapers_sync_drive():
-    if not os.environ.get("GOOGLE_DRIVE_FOLDER_ID"):
-        return jsonify({"error": "Google Drive sync isn't configured."}), 400
-
-    if not drive_sync.is_authenticated():
-        return jsonify(
-            {"error": "Not authenticated yet — run 'python drive_sync.py' once from a terminal."}
-        ), 400
-
-    try:
-        result = drive_sync.sync()
-    except Exception as exc:  # noqa: BLE001 - surface any Drive API error to the UI
-        return jsonify({"error": str(exc)}), 502
-
-    return jsonify(result)
 
 
 @app.route("/api/now-playing")
