@@ -24,9 +24,14 @@ import io
 from image_utils import normalize_image
 
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
-TOKEN_PATH = ".drive_token.json"
-MANIFEST_PATH = os.path.join("static", "wallpapers", ".drive_synced.json")
-WALLPAPER_DIR = os.path.join("static", "wallpapers")
+
+# Anchored to this file's own location (like Flask's app.static_folder is),
+# not the current working directory — otherwise running this from anywhere
+# other than the project root silently writes/reads the wrong place.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TOKEN_PATH = os.path.join(BASE_DIR, ".drive_token.json")
+WALLPAPER_DIR = os.path.join(BASE_DIR, "static", "wallpapers")
+MANIFEST_PATH = os.path.join(WALLPAPER_DIR, ".drive_synced.json")
 
 IMAGE_MIME_TYPES = {
     "image/jpeg",
