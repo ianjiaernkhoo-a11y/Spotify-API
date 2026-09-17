@@ -8,6 +8,7 @@ from PIL import Image, UnidentifiedImageError
 from spotipy import SpotifyException
 from werkzeug.utils import secure_filename
 
+import drive_sync
 from auth import get_spotify_client
 from lyrics import get_lyrics
 
@@ -78,7 +79,9 @@ def wallpaper():
 
 @app.route("/upload")
 def upload_page():
-    return render_template("upload.html")
+    return render_template(
+        "upload.html", drive_configured=bool(os.environ.get("GOOGLE_DRIVE_FOLDER_ID"))
+    )
 
 
 def _wallpaper_names():
@@ -144,6 +147,24 @@ def wallpapers_delete(filename):
 
     os.remove(path)
     return jsonify({"ok": True})
+
+
+@app.route("/api/wallpapers/sync-drive", methods=["POST"])
+def wallpapers_sync_drive():
+    if not os.environ.get("GOOGLE_DRIVE_FOLDER_ID"):
+        return jsonify({"error": "Google Drive sync isn't configured."}), 400
+
+    if not drive_sync.is_authenticated():
+        return jsonify(
+            {"error": "Not authenticated yet — run 'python drive_sync.py' once from a terminal."}
+        ), 400
+
+    try:
+        result = drive_sync.sync()
+    except Exception as exc:  # noqa: BLE001 - surface any Drive API error to the UI
+        return jsonify({"error": str(exc)}), 502
+
+    return jsonify(result)
 
 
 @app.route("/api/now-playing")

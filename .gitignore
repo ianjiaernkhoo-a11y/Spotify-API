@@ -1,5 +1,6 @@
 .env
 .cache
+.drive_token.json
 __pycache__/
 *.pyc
 venv/
