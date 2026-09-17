@@ -18,16 +18,24 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-from PIL import Image, UnidentifiedImageError
 from werkzeug.utils import secure_filename
 import io
+
+from image_utils import normalize_image
 
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 TOKEN_PATH = ".drive_token.json"
 MANIFEST_PATH = os.path.join("static", "wallpapers", ".drive_synced.json")
 WALLPAPER_DIR = os.path.join("static", "wallpapers")
 
-IMAGE_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+IMAGE_MIME_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/heic",
+    "image/heif",
+}
 
 
 def is_authenticated() -> bool:
@@ -118,12 +126,14 @@ def sync() -> dict:
         data = buffer.getvalue()
 
         try:
-            Image.open(io.BytesIO(data)).verify()
-        except (UnidentifiedImageError, OSError):
+            data, converted = normalize_image(data)
+        except ValueError:
             skipped.append({"name": drive_file["name"], "reason": "not a valid image"})
             continue
 
         safe_name = secure_filename(drive_file["name"]) or "photo"
+        if converted:
+            safe_name = os.path.splitext(safe_name)[0] + ".jpg"
         stored_name = f"gdrive-{file_id[:8]}-{safe_name}"
         with open(os.path.join(WALLPAPER_DIR, stored_name), "wb") as f:
             f.write(data)

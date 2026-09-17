@@ -1,15 +1,14 @@
-import io
 import os
 import uuid
 
 import requests
 from flask import Flask, abort, jsonify, render_template, request
-from PIL import Image, UnidentifiedImageError
 from spotipy import SpotifyException
 from werkzeug.utils import secure_filename
 
 import drive_sync
 from auth import get_spotify_client
+from image_utils import normalize_image
 from lyrics import get_lyrics
 
 app = Flask(__name__)
@@ -20,7 +19,7 @@ VALID_TIME_RANGES = {"short_term", "medium_term", "long_term"}
 VALID_SEARCH_TYPES = {"track", "artist", "album", "playlist"}
 
 WALLPAPER_DIR = os.path.join(app.static_folder, "wallpapers")
-WALLPAPER_EXTENSIONS = {".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".svg"}
+WALLPAPER_EXTENSIONS = {".jpg", ".jpeg", ".jfif", ".png", ".webp", ".gif", ".svg", ".heic", ".heif"}
 os.makedirs(WALLPAPER_DIR, exist_ok=True)
 
 WEATHER_LATITUDE = os.environ.get("WEATHER_LATITUDE")
@@ -119,14 +118,15 @@ def wallpapers_upload():
             rejected.append({"filename": file.filename, "reason": "Not a supported photo format"})
             continue
 
-        data = file.read()
         try:
-            Image.open(io.BytesIO(data)).verify()
-        except (UnidentifiedImageError, OSError):
+            data, converted = normalize_image(file.read())
+        except ValueError:
             rejected.append({"filename": file.filename, "reason": "Not a valid image"})
             continue
 
         safe_name = secure_filename(file.filename) or "photo"
+        if converted:
+            safe_name = os.path.splitext(safe_name)[0] + ".jpg"
         stored_name = f"{uuid.uuid4().hex[:8]}-{safe_name}"
         with open(os.path.join(WALLPAPER_DIR, stored_name), "wb") as f:
             f.write(data)
