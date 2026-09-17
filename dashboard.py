@@ -137,11 +137,15 @@ def wallpapers_upload():
 
 @app.route("/api/wallpapers/<filename>", methods=["DELETE"])
 def wallpapers_delete(filename):
-    safe_name = secure_filename(filename)
-    if not safe_name or safe_name != filename:
+    # secure_filename() also normalizes safe characters (spaces, commas,
+    # parens), which would wrongly reject legitimate files that were dropped
+    # into the folder directly rather than uploaded through this app. Guard
+    # against path traversal by resolving the real path instead.
+    wallpaper_root = os.path.abspath(WALLPAPER_DIR)
+    path = os.path.abspath(os.path.join(wallpaper_root, filename))
+    if os.path.dirname(path) != wallpaper_root:
         abort(400)
 
-    path = os.path.join(WALLPAPER_DIR, safe_name)
     if not os.path.isfile(path):
         abort(404)
 
