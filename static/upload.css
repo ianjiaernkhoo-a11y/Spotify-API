@@ -94,29 +94,12 @@ body {
   color: var(--danger);
 }
 
-.drive-sync {
+.drive-note {
   max-width: 640px;
   margin: 0 auto 24px;
   text-align: center;
-}
-
-.drive-sync button {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 8px 16px;
+  color: var(--text-dim);
   font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.drive-sync button:hover {
-  background: var(--surface-2);
-}
-
-.drive-sync button:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .gallery {

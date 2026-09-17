@@ -111,28 +111,4 @@ dropzone.addEventListener("drop", (e) => {
   }
 });
 
-const syncBtn = document.getElementById("btn-sync-drive");
-if (syncBtn) {
-  syncBtn.addEventListener("click", async () => {
-    syncBtn.disabled = true;
-    setStatus("Checking Google Drive for new photos...");
-    try {
-      const res = await fetch("/api/wallpapers/sync-drive", { method: "POST" });
-      const result = await res.json();
-      if (!res.ok) {
-        setStatus(result.error || "Sync failed.", true);
-      } else if (result.downloaded.length) {
-        setStatus(`Added ${result.downloaded.length} photo${result.downloaded.length > 1 ? "s" : ""} from Drive.`);
-      } else {
-        setStatus("No new photos in Drive.");
-      }
-      loadGallery();
-    } catch {
-      setStatus("Sync failed — check your connection.", true);
-    } finally {
-      syncBtn.disabled = false;
-    }
-  });
-}
-
 loadGallery();
