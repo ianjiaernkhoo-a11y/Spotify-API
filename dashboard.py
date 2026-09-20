@@ -213,7 +213,7 @@ def lyrics():
     artist_name = item["artists"][0]["name"] if item["artists"] else ""
 
     try:
-        result = get_lyrics(track_name, artist_name)
+        result = get_lyrics(track_name, artist_name, item.get("duration_ms"))
     except requests.RequestException as exc:
         return jsonify({"available": False, "error": str(exc)})
 
