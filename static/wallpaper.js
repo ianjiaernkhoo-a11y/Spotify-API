@@ -16,6 +16,16 @@ let images = [];
 let index = 0;
 let showingA = true;
 
+function shuffle(arr) {
+  // Fisher-Yates — re-run on every page load so the kiosk doesn't always
+  // open on the same handful of photos.
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 function preload(url) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -49,7 +59,7 @@ async function showNext() {
 async function init() {
   try {
     const res = await fetch("/api/wallpapers");
-    images = await res.json();
+    images = shuffle(await res.json());
   } catch {
     images = [];
   }
