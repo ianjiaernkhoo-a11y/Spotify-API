@@ -93,7 +93,7 @@ let lastKnownDurationMs = 0;
 let lastKnownIsPlaying = false;
 let lastSyncedAt = 0;
 
-const LYRICS_RETRY_DELAYS_MS = [2000, 5000, 10000];
+const LYRICS_RETRY_DELAYS_MS = [1500, 3000, 5000]; // last value repeats until lyrics load
 
 async function loadLyrics(attempt = 0) {
   const forTrack = lastTrackId;
@@ -114,14 +114,15 @@ async function loadLyrics(attempt = 0) {
   // Track changed while this was in flight — a newer loadLyrics owns the view.
   if (forTrack !== lastTrackId) return;
 
-  if (data.error && attempt < LYRICS_RETRY_DELAYS_MS.length) {
-    setTimeout(() => loadLyrics(attempt + 1), LYRICS_RETRY_DELAYS_MS[attempt]);
-    return;
-  }
-
   if (!data.available || !data.lines || !data.lines.length) {
     lyricsView.innerHTML = "";
     lyricsView.appendChild(el("div", "empty", data.error ? "Lyrics unavailable right now." : "No lyrics available."));
+    // Keep trying for as long as this track plays, so lyrics appear mid-song
+    // once the network/API recovers, not only at track start.
+    if (data.error) {
+      const delay = LYRICS_RETRY_DELAYS_MS[Math.min(attempt, LYRICS_RETRY_DELAYS_MS.length - 1)];
+      setTimeout(() => loadLyrics(attempt + 1), delay);
+    }
     return;
   }
 
