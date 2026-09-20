@@ -1,6 +1,9 @@
 const NOW_PLAYING_POLL_MS = 3000;
 const WEATHER_POLL_MS = 10 * 60 * 1000;
 const UP_NEXT_THRESHOLD_MS = 20000; // show "up next" once this close to the end
+const LYRICS_LEAD_MS = 350; // light a line slightly early to offset Spotify/render lag; tune if it feels early/late
+const PROGRESS_SNAP_THRESHOLD_MS = 1500; // bigger disagreement than this = seek/skip, jump straight to it
+const PROGRESS_EASE = 0.3; // fraction of small drift corrected per poll
 
 function formatTime(ms) {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -180,7 +183,7 @@ function updateLyricsHighlight(progressMs) {
   }
   let index = -1;
   for (let i = 0; i < currentLyrics.lines.length; i++) {
-    if (currentLyrics.lines[i].time_ms <= progressMs) index = i;
+    if (currentLyrics.lines[i].time_ms <= progressMs + LYRICS_LEAD_MS) index = i;
     else break;
   }
   if (index === activeLyricsLineIndex) return;
@@ -202,20 +205,44 @@ function applyProgress(progressMs, durationMs) {
   updateUpNextVisibility(progressMs, durationMs);
 }
 
+function estimateProgressMs() {
+  return Math.min(lastKnownDurationMs, lastKnownProgressMs + (Date.now() - lastSyncedAt));
+}
+
+// Folds a fresh API reading into the local clock. Spotify's progress_ms was
+// measured roughly half a round trip before it reached us, so add that back.
+// Small disagreements are eased in rather than snapped, otherwise every poll
+// would yank the clock back to a slightly stale value and delay (or even
+// re-trigger) lyric lines. Big jumps (seek, skip, pause/resume) snap.
+function syncProgress(data, roundTripMs) {
+  const target = Math.min(data.duration_ms, data.progress_ms + roundTripMs / 2);
+  const wasTicking = lastKnownIsPlaying && lastKnownDurationMs === data.duration_ms;
+  const drift = target - estimateProgressMs();
+
+  lastKnownProgressMs =
+    wasTicking && data.is_playing && Math.abs(drift) < PROGRESS_SNAP_THRESHOLD_MS
+      ? estimateProgressMs() + drift * PROGRESS_EASE
+      : target;
+  lastKnownDurationMs = data.duration_ms;
+  lastKnownIsPlaying = data.is_playing;
+  lastSyncedAt = Date.now();
+}
+
 function tickProgress() {
   if (!lastKnownIsPlaying || !lastKnownDurationMs) return;
-  const estimate = Math.min(lastKnownDurationMs, lastKnownProgressMs + (Date.now() - lastSyncedAt));
-  applyProgress(estimate, lastKnownDurationMs);
+  applyProgress(estimateProgressMs(), lastKnownDurationMs);
 }
 setInterval(tickProgress, 150); // frequent enough that lyric-line changes feel instant, still all local (no network)
 
 async function pollNowPlaying() {
   let data;
+  const requestStartedAt = Date.now();
   try {
     data = await getJSON("/api/now-playing");
   } catch {
     return;
   }
+  const roundTripMs = Date.now() - requestStartedAt;
 
   if (!data.track) {
     sceneEl.hidden = true;
@@ -253,11 +280,8 @@ async function pollNowPlaying() {
     loadNextTrack();
   }
 
-  lastKnownProgressMs = data.progress_ms;
-  lastKnownDurationMs = data.duration_ms;
-  lastKnownIsPlaying = data.is_playing;
-  lastSyncedAt = Date.now();
-  applyProgress(data.progress_ms, data.duration_ms);
+  syncProgress(data, roundTripMs);
+  applyProgress(lastKnownProgressMs, lastKnownDurationMs);
 }
 
 pollNowPlaying();
