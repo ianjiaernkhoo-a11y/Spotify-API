@@ -195,7 +195,7 @@ function tickProgress() {
   const estimate = Math.min(lastKnownDurationMs, lastKnownProgressMs + (Date.now() - lastSyncedAt));
   applyProgress(estimate, lastKnownDurationMs);
 }
-setInterval(tickProgress, 1000);
+setInterval(tickProgress, 150); // frequent enough that lyric-line changes feel instant, still all local (no network)
 
 async function pollNowPlaying() {
   let data;
