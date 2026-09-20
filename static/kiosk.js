@@ -93,18 +93,29 @@ let lastKnownDurationMs = 0;
 let lastKnownIsPlaying = false;
 let lastSyncedAt = 0;
 
-async function loadLyrics() {
-  currentLyrics = null;
-  activeLyricsLineIndex = -1;
-  lyricsView.innerHTML = "";
-  lyricsView.appendChild(el("div", "empty", "Loading lyrics..."));
+const LYRICS_RETRY_DELAYS_MS = [2000, 5000, 10000];
+
+async function loadLyrics(attempt = 0) {
+  const forTrack = lastTrackId;
+  if (attempt === 0) {
+    currentLyrics = null;
+    activeLyricsLineIndex = -1;
+    lyricsView.innerHTML = "";
+    lyricsView.appendChild(el("div", "empty", "Loading lyrics..."));
+  }
 
   let data;
   try {
     data = await getJSON("/api/lyrics");
   } catch {
-    lyricsView.innerHTML = "";
-    lyricsView.appendChild(el("div", "empty", "Lyrics unavailable right now."));
+    data = { available: false, error: true };
+  }
+
+  // Track changed while this was in flight — a newer loadLyrics owns the view.
+  if (forTrack !== lastTrackId) return;
+
+  if (data.error && attempt < LYRICS_RETRY_DELAYS_MS.length) {
+    setTimeout(() => loadLyrics(attempt + 1), LYRICS_RETRY_DELAYS_MS[attempt]);
     return;
   }
 
