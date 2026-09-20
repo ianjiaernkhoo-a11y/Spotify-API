@@ -32,9 +32,23 @@ def _parse_synced_lyrics(lrc_text: str) -> list[dict]:
     return lines
 
 
-def get_lyrics(track_name: str, artist_name: str) -> dict | None:
+def _pick_best_match(results: list[dict], duration_ms: int | None) -> dict:
+    """LRCLIB's search is fuzzy text matching, so the top hit can be a
+    different version of the song (live, remix, extended cut) with its own
+    timing — those have their own valid synced lyrics, just for a different
+    runtime, which desyncs further as the track plays. Duration is a much
+    stronger signal than search rank, so prefer whichever result's length
+    actually matches what's playing."""
+    if duration_ms is None:
+        return results[0]
+    target_s = duration_ms / 1000
+    return min(results, key=lambda r: abs((r.get("duration") or 0) - target_s))
+
+
+def get_lyrics(track_name: str, artist_name: str, duration_ms: int | None = None) -> dict | None:
     """Returns {"sync_type": ..., "lines": [{"time_ms": int, "text": str}, ...]}
-    or None if no match is found."""
+    or None if no match is found. Pass the currently playing track's
+    duration_ms so the right version/edit gets picked among search results."""
     response = requests.get(
         SEARCH_URL,
         params={"track_name": track_name, "artist_name": artist_name},
@@ -45,7 +59,7 @@ def get_lyrics(track_name: str, artist_name: str) -> dict | None:
     if not results:
         return None
 
-    best = results[0]
+    best = _pick_best_match(results, duration_ms)
     if best.get("instrumental"):
         return {"sync_type": "UNSYNCED", "lines": []}
 

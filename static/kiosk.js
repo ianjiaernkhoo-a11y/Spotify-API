@@ -84,6 +84,15 @@ let activeLyricsLineIndex = -1;
 let releaseYear = "";
 let nextTrack = null;
 
+// Polling the API every 3s (to stay well under Spotify's rate limits) would
+// make the timer/progress bar/lyrics visibly jump every 3s instead of
+// ticking smoothly. Instead, resync to the authoritative progress_ms on
+// each poll but interpolate locally every second in between.
+let lastKnownProgressMs = 0;
+let lastKnownDurationMs = 0;
+let lastKnownIsPlaying = false;
+let lastSyncedAt = 0;
+
 async function loadLyrics() {
   currentLyrics = null;
   activeLyricsLineIndex = -1;
@@ -172,6 +181,22 @@ function updateLyricsHighlight(progressMs) {
   }
 }
 
+function applyProgress(progressMs, durationMs) {
+  const pct = durationMs ? (progressMs / durationMs) * 100 : 0;
+  progressBar.style.width = `${Math.min(100, pct)}%`;
+  elapsedEl.textContent = formatTime(progressMs);
+  durationEl.textContent = formatTime(durationMs);
+  updateLyricsHighlight(progressMs);
+  updateUpNextVisibility(progressMs, durationMs);
+}
+
+function tickProgress() {
+  if (!lastKnownIsPlaying || !lastKnownDurationMs) return;
+  const estimate = Math.min(lastKnownDurationMs, lastKnownProgressMs + (Date.now() - lastSyncedAt));
+  applyProgress(estimate, lastKnownDurationMs);
+}
+setInterval(tickProgress, 1000);
+
 async function pollNowPlaying() {
   let data;
   try {
@@ -185,6 +210,7 @@ async function pollNowPlaying() {
     idleViewEl.hidden = false;
     controlsBarEl.hidden = true;
     bgEl.style.backgroundImage = "";
+    lastKnownIsPlaying = false;
     if (lastTrackId !== null) {
       lastTrackId = null;
       currentLyrics = null;
@@ -215,12 +241,11 @@ async function pollNowPlaying() {
     loadNextTrack();
   }
 
-  const pct = data.duration_ms ? (data.progress_ms / data.duration_ms) * 100 : 0;
-  progressBar.style.width = `${Math.min(100, pct)}%`;
-  elapsedEl.textContent = formatTime(data.progress_ms);
-  durationEl.textContent = formatTime(data.duration_ms);
-  updateLyricsHighlight(data.progress_ms);
-  updateUpNextVisibility(data.progress_ms, data.duration_ms);
+  lastKnownProgressMs = data.progress_ms;
+  lastKnownDurationMs = data.duration_ms;
+  lastKnownIsPlaying = data.is_playing;
+  lastSyncedAt = Date.now();
+  applyProgress(data.progress_ms, data.duration_ms);
 }
 
 pollNowPlaying();
