@@ -4,11 +4,14 @@ crowd-sourced, so some tracks (especially very obscure ones) may be missing.
 """
 
 import re
+import time
 
 import requests
 from zhconv import convert as _zhconv
 
 SEARCH_URL = "https://lrclib.net/api/search"
+_RETRY_ATTEMPTS = 3
+_RETRY_DELAY_S = 0.75
 
 _LRC_LINE_RE = re.compile(r"^\[(\d+):(\d+(?:\.\d+)?)\](.*)$")
 
@@ -60,17 +63,33 @@ def _pick_best_match(results: list[dict], duration_ms: int | None) -> dict:
     return min(results, key=duration_diff)
 
 
+def _search(track_name: str, artist_name: str) -> list[dict]:
+    """A single flaky connection (Pi WiFi) or a brief LRCLIB hiccup would
+    otherwise surface as "lyrics unavailable" for the whole track with no
+    second chance, so retry transient failures a couple of times before
+    giving up."""
+    last_exc = None
+    for attempt in range(_RETRY_ATTEMPTS):
+        try:
+            response = requests.get(
+                SEARCH_URL,
+                params={"track_name": track_name, "artist_name": artist_name},
+                timeout=10,
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as exc:
+            last_exc = exc
+            if attempt < _RETRY_ATTEMPTS - 1:
+                time.sleep(_RETRY_DELAY_S)
+    raise last_exc
+
+
 def get_lyrics(track_name: str, artist_name: str, duration_ms: int | None = None) -> dict | None:
     """Returns {"sync_type": ..., "lines": [{"time_ms": int, "text": str}, ...]}
     or None if no match is found. Pass the currently playing track's
     duration_ms so the right version/edit gets picked among search results."""
-    response = requests.get(
-        SEARCH_URL,
-        params={"track_name": track_name, "artist_name": artist_name},
-        timeout=10,
-    )
-    response.raise_for_status()
-    results = response.json()
+    results = _search(track_name, artist_name)
     if not results:
         return None
 
