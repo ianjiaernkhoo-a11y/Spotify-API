@@ -38,11 +38,26 @@ def _pick_best_match(results: list[dict], duration_ms: int | None) -> dict:
     timing — those have their own valid synced lyrics, just for a different
     runtime, which desyncs further as the track plays. Duration is a much
     stronger signal than search rank, so prefer whichever result's length
-    actually matches what's playing."""
+    actually matches what's playing.
+
+    But duration proximity alone isn't enough: picking purely by closest
+    duration can land on a result that only has plainLyrics (no timing at
+    all) while a still-close-enough result has proper synced lyrics — that
+    would trade "possibly slightly wrong version" for "definitely no
+    highlighting whatsoever", which is worse. So prefer a synced result
+    within LRCLIB's own ~2s duration tolerance first, and only fall back to
+    picking by duration alone (synced or not) if none qualifies."""
     if duration_ms is None:
         return results[0]
     target_s = duration_ms / 1000
-    return min(results, key=lambda r: abs((r.get("duration") or 0) - target_s))
+
+    def duration_diff(r):
+        return abs((r.get("duration") or 0) - target_s)
+
+    close_synced = [r for r in results if r.get("syncedLyrics") and duration_diff(r) <= 2]
+    if close_synced:
+        return min(close_synced, key=duration_diff)
+    return min(results, key=duration_diff)
 
 
 def get_lyrics(track_name: str, artist_name: str, duration_ms: int | None = None) -> dict | None:
